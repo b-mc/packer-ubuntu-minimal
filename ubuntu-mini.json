@@ -1,0 +1,78 @@
+{
+  "variables":{
+     "vm_name": "ubuntu-packer",
+     "iso_name": "mini.iso",
+     "iso_path": "iso",
+     "iso_url": "http://archive.ubuntu.com/ubuntu/dists/bionic-updates/main/installer-amd64/current/images/netboot/mini.iso",
+     "iso_checksum": "b4667b8f6d863271a014855d0f55b365f956bcdf8c691c8a3741b60d905e9647",
+     "iso_checksum_type": "sha256",
+     "boot_command": "<tab><wait><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>/linux initrd=/initrd.gz auto=true noapic=true fb=false hostname=ubuntu locale=en_US keyboard-configuration/modelcode=SKIP",
+     "boot_wait": "5s",
+     "cpus": "4",
+     "memory": "4096",
+     "disk_size": "8192",
+     "http_directory": "http",
+     "ssh_username": "theuser",
+     "ssh_password": "examplepass",
+     "ssh_wait_timeout": "3600s",
+     "headless": "false"
+  },
+  "builders":[
+     {
+        "type": "virtualbox-iso",
+        "guest_os_type": "Ubuntu_64",
+        "vm_name": "{{user `vm_name`}}",
+        "iso_urls":[
+           "{{user `iso_path`}}/{{user `iso_name`}}",
+           "{{user `iso_url`}}"
+        ],
+        "iso_checksum": "{{user `iso_checksum`}}",
+        "iso_checksum_type": "{{user `iso_checksum_type`}}",
+        "output_directory": "{{user `vm_name`}}-ovf",
+        "boot_command": "{{user `boot_command`}} preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<enter>",
+        "boot_wait": "{{user `boot_wait`}}",
+        "disk_size": "{{user `disk_size`}}",
+        "http_directory": "http",
+        "ssh_username": "{{user `ssh_username`}}",
+        "ssh_password": "{{user `ssh_password`}}",
+        "ssh_wait_timeout": "{{user `ssh_wait_timeout`}}",
+        "shutdown_command": "echo '{{user `ssh_password`}}'|sudo -S shutdown -P now",
+        "headless": "{{user `headless`}}",
+        "vboxmanage":[
+           [
+              "modifyvm", "{{.Name}}", "--cpus", "{{user `cpus`}}"
+           ],
+           [
+              "modifyvm", "{{.Name}}", "--memory", "{{user `memory`}}"
+           ],
+           [
+              "modifyvm", "{{.Name}}", "--graphicscontroller", "vmsvga"
+           ],
+           [
+              "modifyvm", "{{.Name}}", "--vram", "32"
+           ],
+           [
+              "modifyvm", "{{.Name}}", "--nictype1", "82540EM"
+           ],
+           [
+              "modifyvm", "{{.Name}}", "--vrde", "off"
+           ]
+        ]
+     }
+  ],
+  "provisioners":[
+     {
+        "environment_vars":[
+           "DEBIAN_FRONTEND=noninteractive",
+           "USER_ACC={{user `ssh_username`}}"
+        ],
+        "execute_command": "echo '{{user `ssh_password`}}'|{{.Vars}} sudo -E -S bash '{{.Path}}'",
+        "expect_disconnect":true,
+        "type": "shell",
+        "scripts":[
+           "scripts/various.sh",
+           "scripts/guestadditions.sh"
+        ]
+     }
+  ]
+}
